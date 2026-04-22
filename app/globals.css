@@ -10,10 +10,10 @@
   --border-strong: rgba(232, 228, 219, 0.15);
   --border-dashed: rgba(232, 228, 219, 0.1);
 
-  --text: #e8e4db;
-  --text-muted: #8a8680;
-  --text-faint: #6b6862;
-  --text-ghost: #3a3733;
+  --text: #ffffff;
+  --text-muted: #e8e4db;
+  --text-faint: #a8a49a;
+  --text-ghost: #5a5752;
 
   --accent: #d4703a;
   --accent-bright: #ffb380;

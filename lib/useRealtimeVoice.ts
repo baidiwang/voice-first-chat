@@ -8,6 +8,7 @@ export type ActionItem = {
   status: "pending" | "success" | "error";
   result?: unknown;
   timestamp: string;
+  relatedTranscriptId?: string;
 };
 
 export type TranscriptItem = {
@@ -81,6 +82,7 @@ export function useRealtimeVoice() {
   const handleDataChannelMessage = useCallback(
     (event: MessageEvent) => {
       const msg = JSON.parse(event.data);
+      console.log("[realtime]", msg.type, msg);
 
       if (msg.type === "conversation.item.input_audio_transcription.delta") {
         const text = msg.delta ?? "";
@@ -141,32 +143,72 @@ export function useRealtimeVoice() {
   );
 
   const connect = useCallback(async () => {
+    // Clean up any existing connection first
+    if (pcRef.current) {
+      console.log("[connect] cleaning up previous connection");
+      pcRef.current.close();
+      pcRef.current = null;
+      dcRef.current = null;
+    }
+
+    console.log("[connect] 1. fetching session");
     const sessionRes = await fetch("/api/session", { method: "POST" });
     const session = await sessionRes.json();
+    console.log("[connect] 2. session response:", session);
+
     const ephemeralKey = session.client_secret?.value;
-    if (!ephemeralKey) return;
+    if (!ephemeralKey) {
+      console.error("[connect] no ephemeral key!", session);
+      return;
+    }
+    console.log("[connect] 3. got ephemeral key");
 
     const pc = new RTCPeerConnection();
     pcRef.current = pc;
 
+    // Set up audio output
     const audio = new Audio();
     audio.autoplay = true;
     audioRef.current = audio;
     pc.ontrack = (e) => {
+      console.log("[connect] ontrack fired", e.streams);
       audio.srcObject = e.streams[0];
     };
 
+    // CRITICAL: Create data channel BEFORE anything else
+    const dc = pc.createDataChannel("oai-events");
+    dcRef.current = dc;
+    dc.addEventListener("open", () => {
+      console.log("[connect] data channel OPEN");
+    });
+    dc.addEventListener("close", () => {
+      console.log("[connect] data channel CLOSED");
+    });
+    dc.addEventListener("error", (e) => {
+      console.error("[connect] data channel ERROR", e);
+    });
+    dc.addEventListener("message", handleDataChannelMessage);
+
+    // Get microphone
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log("[connect] 4. got mic stream", stream);
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
     setListening(true);
 
-    const dc = pc.createDataChannel("oai-events");
-    dcRef.current = dc;
-    dc.onmessage = handleDataChannelMessage;
+    // Monitor connection state
+    pc.addEventListener("connectionstatechange", () => {
+      console.log("[connect] pc state:", pc.connectionState);
+    });
+    pc.addEventListener("iceconnectionstatechange", () => {
+      console.log("[connect] ice state:", pc.iceConnectionState);
+    });
 
+    // Create offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    console.log("[connect] 5. offer created");
 
+    // Send offer to OpenAI
     const sdpRes = await fetch(
       "https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17",
       {
@@ -178,9 +220,19 @@ export function useRealtimeVoice() {
         body: offer.sdp,
       },
     );
+    console.log("[connect] 6. sdp response status:", sdpRes.status);
+
+    if (!sdpRes.ok) {
+      const errText = await sdpRes.text();
+      console.error("[connect] sdp error:", errText);
+      return;
+    }
 
     const answerSdp = await sdpRes.text();
+    console.log("[connect] 7. answer sdp length:", answerSdp.length);
+
     await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+    console.log("[connect] 8. remote description set");
     setConnected(true);
   }, [handleDataChannelMessage]);
 
