@@ -1,26 +1,71 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0a0908;
+  --bg-raised: #141210;
+  --border: rgba(232, 228, 219, 0.08);
+  --border-strong: rgba(232, 228, 219, 0.15);
+  --border-dashed: rgba(232, 228, 219, 0.1);
+
+  --text: #e8e4db;
+  --text-muted: #8a8680;
+  --text-faint: #6b6862;
+  --text-ghost: #3a3733;
+
+  --accent: #d4703a;
+  --accent-bright: #ffb380;
+  --accent-glow: rgba(255, 140, 60, 0.22);
+  --accent-ring: rgba(212, 112, 58, 0.3);
+  --accent-fill: rgba(212, 112, 58, 0.1);
+  --accent-border: rgba(212, 112, 58, 0.4);
+
+  --ok: #6a9a5b;
+  --pending: #d4a030;
+
+  --font-sans: var(--font-mozilla), system-ui, sans-serif;
+  --font-serif: var(--font-instrument), Georgia, serif;
+  --font-mono: var(--font-mono), "SF Mono", Consolas, monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-border: var(--border);
+  --font-sans: var(--font-mozilla);
+  --font-serif: var(--font-instrument);
+  --font-mono: var(--font-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(232, 228, 219, 0.08);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 228, 219, 0.15);
 }
