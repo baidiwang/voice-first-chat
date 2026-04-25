@@ -186,114 +186,140 @@ export function useRealtimeVoice() {
     [handleToolCall],
   );
 
-  const connect = useCallback(async () => {
-    // Clean up any existing connection
-    if (pcRef.current) {
-      //   console.log("[connect] cleaning up previous connection");
-      pcRef.current.close();
-      pcRef.current = null;
-      dcRef.current = null;
-    }
+  const connect = useCallback(
+    async (initialMessage?: string) => {
+      // Clean up any existing connection
+      if (pcRef.current) {
+        //   console.log("[connect] cleaning up previous connection");
+        pcRef.current.close();
+        pcRef.current = null;
+        dcRef.current = null;
+      }
 
-    // console.log("[connect] 1. fetching session");
-    const sessionRes = await fetch("/api/session", { method: "POST" });
-    const session = await sessionRes.json();
-    // console.log("[connect] 2. session response:", session);
+      // console.log("[connect] 1. fetching session");
+      const sessionRes = await fetch("/api/session", { method: "POST" });
+      const session = await sessionRes.json();
+      // console.log("[connect] 2. session response:", session);
 
-    const ephemeralKey = session.value;
-    if (!ephemeralKey) {
-      //   console.error("[connect] no ephemeral key!", session);
-      return;
-    }
-    console.log("[connect] 3. got ephemeral key");
+      const ephemeralKey = session.value;
+      if (!ephemeralKey) {
+        //   console.error("[connect] no ephemeral key!", session);
+        return;
+      }
+      console.log("[connect] 3. got ephemeral key");
 
-    // Create peer connection
-    const pc = new RTCPeerConnection();
-    pcRef.current = pc;
+      // Create peer connection
+      const pc = new RTCPeerConnection();
+      pcRef.current = pc;
 
-    // CRITICAL ORDER: data channel FIRST, before anything else on pc
-    const dc = pc.createDataChannel("oai-events");
-    dcRef.current = dc;
-    dc.addEventListener("open", () => {
-      //   console.log("[connect] data channel OPEN");
-    });
-    dc.addEventListener("close", () => {
-      //   console.log("[connect] data channel CLOSED");
-    });
-    dc.addEventListener("message", handleDataChannelMessage);
+      // CRITICAL ORDER: data channel FIRST, before anything else on pc
+      const dc = pc.createDataChannel("oai-events");
+      dcRef.current = dc;
+      dc.addEventListener("open", () => {
+        //   console.log("[connect] data channel OPEN");
+      });
+      dc.addEventListener("close", () => {
+        //   console.log("[connect] data channel CLOSED");
+      });
+      dc.addEventListener("message", handleDataChannelMessage);
 
-    // Set up audio output
-    pc.ontrack = (e) => {
-      console.log("[connect] ontrack fired");
-      const audio = new Audio();
-      audio.autoplay = true;
-      audio.srcObject = e.streams[0];
-      audioRef.current = audio;
-    };
+      // Set up audio output
+      pc.ontrack = (e) => {
+        console.log("[connect] ontrack fired");
+        const audio = new Audio();
+        audio.autoplay = true;
+        audio.srcObject = e.streams[0];
+        audioRef.current = audio;
+      };
 
-    // Get microphone
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    // console.log("[connect] 4. got mic stream");
-    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
-    setListening(true);
+      // Get microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // console.log("[connect] 4. got mic stream");
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      setListening(true);
 
-    // Set up audio analyser for real-time volume
-    const audioCtx = new AudioContext();
-    const source = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-    audioCtxRef.current = audioCtx;
-    analyserRef.current = analyser;
+      // Set up audio analyser for real-time volume
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      audioCtxRef.current = audioCtx;
+      analyserRef.current = analyser;
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    const updateVolume = () => {
-      analyser.getByteFrequencyData(dataArray);
-      const sum = dataArray.reduce((a, b) => a + b, 0);
-      const avg = sum / dataArray.length / 255;
-      setVolume(avg);
-      volumeRafRef.current = requestAnimationFrame(updateVolume);
-    };
-    updateVolume();
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const sum = dataArray.reduce((a, b) => a + b, 0);
+        const avg = sum / dataArray.length / 255;
+        setVolume(avg);
+        volumeRafRef.current = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
 
-    // Monitor states
-    pc.addEventListener("connectionstatechange", () => {
-      //   console.log("[connect] pc state:", pc.connectionState);
-    });
-    pc.addEventListener("iceconnectionstatechange", () => {
-      //   console.log("[connect] ice state:", pc.iceConnectionState);
-    });
+      // Monitor states
+      pc.addEventListener("connectionstatechange", () => {
+        //   console.log("[connect] pc state:", pc.connectionState);
+      });
+      pc.addEventListener("iceconnectionstatechange", () => {
+        //   console.log("[connect] ice state:", pc.iceConnectionState);
+      });
 
-    // Create and send offer
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    // console.log("[connect] 5. offer created");
+      // Create and send offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      // console.log("[connect] 5. offer created");
 
-    const sdpRes = await fetch(
-      `https://api.openai.com/v1/realtime/calls?model=gpt-realtime`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${ephemeralKey}`,
-          "Content-Type": "application/sdp",
+      const sdpRes = await fetch(
+        `https://api.openai.com/v1/realtime/calls?model=gpt-realtime`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${ephemeralKey}`,
+            "Content-Type": "application/sdp",
+          },
+          body: offer.sdp,
         },
-        body: offer.sdp,
-      },
-    );
+      );
 
-    if (!sdpRes.ok) {
-      const errText = await sdpRes.text();
-      //   console.error("[connect] sdp error:", sdpRes.status, errText);
-      return;
-    }
+      if (!sdpRes.ok) {
+        const errText = await sdpRes.text();
+        //   console.error("[connect] sdp error:", sdpRes.status, errText);
+        return;
+      }
 
-    const answerSdp = await sdpRes.text();
-    // console.log("[connect] 6. got answer sdp");
+      const answerSdp = await sdpRes.text();
+      // console.log("[connect] 6. got answer sdp");
 
-    await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
-    // console.log("[connect] 7. connection established");
-    setConnected(true);
-  }, [handleDataChannelMessage]);
+      await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+      // console.log("[connect] 7. connection established");
+      setConnected(true);
+
+      // If an initial message was provided, send it via data channel once open
+      if (initialMessage) {
+        const sendInitial = () => {
+          dc.send(
+            JSON.stringify({
+              type: "conversation.item.create",
+              item: {
+                type: "message",
+                role: "user",
+                content: [{ type: "input_text", text: initialMessage }],
+              },
+            }),
+          );
+          dc.send(JSON.stringify({ type: "response.create" }));
+        };
+
+        if (dc.readyState === "open") {
+          sendInitial();
+        } else {
+          dc.addEventListener("open", sendInitial, { once: true });
+        }
+      }
+    },
+    [handleDataChannelMessage],
+  );
 
   const disconnect = useCallback(() => {
     if (volumeRafRef.current) cancelAnimationFrame(volumeRafRef.current);

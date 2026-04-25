@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 import { useRealtimeVoice } from "@/lib/useRealtimeVoice";
 import { useState, useRef, useEffect } from "react";
 
@@ -281,10 +282,11 @@ export default function Home() {
                   "Save a note — biggest objection was pricing",
                   "Remind me to send the Tacoma proposal tomorrow 10am",
                 ].map((prompt) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={prompt}
                     onClick={() => {
-                      if (!connected) connect();
+                      if (!connected) connect(prompt);
                     }}
                     className="group flex items-center gap-2 hover:gap-3 transition-all cursor-pointer"
                     style={{
@@ -300,7 +302,7 @@ export default function Home() {
                     <span className="group-hover:text-[var(--accent-bright)] transition-colors">
                       {prompt}
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             ) : (
@@ -395,14 +397,17 @@ export default function Home() {
         className={`flex items-center gap-4 py-3.5 border-t ${isMobile ? "px-4" : "px-12"}`}
         style={{ borderColor: "var(--border)", gridColumn: 1 }}
       >
-        <button
-          onClick={connected ? disconnect : connect}
-          className="relative flex items-center justify-center rounded-full cursor-pointer"
+        <Button
+          onClick={() => (connected ? disconnect() : connect())}
+          variant="ghost"
+          size="icon"
+          className="relative flex items-center justify-center rounded-full"
           style={{
             width: 34,
             height: 34,
             border: "0.5px solid var(--accent)",
             background: connected ? "var(--accent-fill)" : "transparent",
+            boxShadow: connected ? "0 0 8px var(--accent)" : "none",
           }}
         >
           {connected && (
@@ -454,7 +459,7 @@ export default function Home() {
               </>
             )}
           </svg>
-        </button>
+        </Button>
         <div
           className="flex-1 uppercase"
           style={{
@@ -710,7 +715,15 @@ function ActionDrawer({
           {actions.length}
         </span>
       </div>
-      <div className="flex-1 overflow-y-auto py-1.5">
+      <div
+        className="flex-1 overflow-y-auto py-1.5"
+        style={{
+          maskImage:
+            "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+        }}
+      >
         {actions.length === 0 && (
           <p
             className="text-center mt-6 px-4"
@@ -952,7 +965,15 @@ function MobileActionSheet({
             </div>
 
             {/* Action list (reuse logic) */}
-            <div className="flex-1 overflow-y-auto py-1.5">
+            <div
+              className="flex-1 overflow-y-auto py-1.5"
+              style={{
+                maskImage:
+                  "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+                WebkitMaskImage:
+                  "linear-gradient(to bottom, black 0%, black 92%, transparent 100%)",
+              }}
+            >
               {actions.length === 0 ? (
                 <p
                   className="text-center mt-6 px-4"
