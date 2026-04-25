@@ -49,16 +49,11 @@ Open `http://localhost:3000`. Click the mic, allow microphone access, start talk
 
 ---
 
-## Tools implemented
-
-- `save_note` — capture structured post-call notes
-- `create_task` — create follow-up tasks with due dates
-- `search_context` — search prior customer/deal context
-
----
-
 ## Additional goals addressed
 
-- ✓ **Responsive layout** — desktop side drawer; mobile bottom sheet
-- ✓ **Real-time transcription with trust cues** — interim text in italic gray, finalized in white; "live" indicator until Whisper confirms
-- ✓ **Real tool integration** — `save_note`, `create_task`, `search_context` with mock backend
+- **Responsive layout** — desktop side drawer; mobile bottom sheet
+- **Real-time transcription with trust cues** — interim text in italic gray, finalized in white; "live" indicator until Whisper confirms
+- **Real tool integration** — `save_note`, `create_task`, `search_context` with mock backend:
+  - `save_note` — capture structured post-call notes
+  - `create_task` — create follow-up tasks with due dates
+  - `search_context` — search prior customer/deal context
